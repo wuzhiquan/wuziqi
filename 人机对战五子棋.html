@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>五子棋</title>
+	<style>
+		canvas{
+			display:block;
+			margin:50px auto;
+			box-shadow: -2px -2px 2px #efefef, 5px 5px 5px #b9b9b9;
+		}
+		.button_area{
+			width:450px;
+			margin:0 auto;
+			text-align: center;
+		}
+		.button_area button {
+			width:120px;
+			height: 32px;
+			border: none;
+			background: #8ddb59;
+			line-height: 32px;
+			border-radius: 5px;
+			cursor: pointer;
+			color:#fff;
+			outline: none;
+		}
+		.button_area button:hover{
+			background: #75c54e;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="chess" width="450px" height="450px"></canvas>
+	<div class="button_area">
+		<button id="backStep">悔棋</button>
+		<button id="rebackStep">撤销悔棋</button>
+		<button id="restar" onclick="window.location.reload();">重新开始</button>
+	</div>
+	<script>
+		var me = true; //定义到我的步骤
+		var chessOver = false; //定义游戏是否结束
+		var chess = document.getElementById('chess');
+		var context = chess.getContext('2d');
+
+		// 保存我下棋的步骤和电脑下棋步骤
+		var myStep = [], comStep = [];
+		// 保存我悔棋步骤和电脑悔棋步骤
+		var myBackStep = [], comBackStep = [];
+		// 棋盘格子颜色
+		context.strokeStyle = '#efefef';
+		var background = new Image();  
+        background.src = "bord.png";
+        background.onload = function(){  
+            context.drawImage(background, 0 , 0 , 450 , 450);
+            for(let i = 0; i < 15; i++){
+            	// 竖
+            	context.moveTo(15 + i*30 , 15);
+                context.lineTo(15 + i*30 , 435);
+                context.stroke();
+                // 横
+                context.moveTo(15 , 15 + i*30);
+                context.lineTo(435 , 15 + i*30);
+                context.stroke();
+            }
+        }
+        // 生成棋盘二维数组
+        var chessBoard = [];
+        for(var i=0 ; i<15 ; i++){
+            chessBoard[i] = [];
+            for(var j=0 ; j<15 ; j++){
+                // 初始化棋盘为二维数组,[0][0]表示没有下棋
+                chessBoard[i][j] = 0;
+            }
+        }
+        //定义赢法数组  
+        var winArr = [];
+        // 初始化赢法数组（三维数组）
+        for(var i=0 ; i<15 ; i++){  
+            winArr[i] = [];  
+            for(var j=0 ; j<15 ; j++){  
+                winArr[i][j] = [];  
+            }  
+        }
+        var count = 0;//赢法总数  
+        //横线赢法  
+        for(var i=0 ; i<15 ; i++){  
+            for(var j=0 ; j<11 ; j++){ 
+                for(var k=0 ; k<5 ; k++){  
+                    winArr[i][j+k][count] = true;  
+                }  
+                count++;  
+            }  
+        }  
+        //竖线赢法  
+        for(var i=0 ; i<15 ; i++){  
+            for(var j=0 ; j<11 ; j++){  
+                for(var k=0 ; k<5 ; k++){  
+                    winArr[j+k][i][count] = true;  
+                }  
+                count++;  
+            }  
+        }  
+        //正斜线赢法  
+        for(var i=0 ; i<11 ; i++){  
+            for(var j=0 ; j<11 ; j++){  
+                for(var k=0 ; k<5 ; k++){  
+                    winArr[i+k][j+k][count] = true;  
+                }  
+                count++;  
+            }  
+        }  
+        //反斜线赢法  
+        for(var i=0 ; i<11 ; i++){  
+            for(var j=14 ; j>3 ; j--){  
+                for(var k=0 ; k<5 ; k++){  
+                    winArr[i+k][j-k][count] = true;  
+                }  
+                count++;  
+            }  
+        }  
+        // console.log(winArr)
+        //赢法统计数组  
+        var myWin = [];  
+        var computerWin = [];  
+        for(let i=0 ; i<count ; i++){  
+            myWin[i] = 0;  
+            computerWin[i] = 0;  
+        }
+
+        // 下棋
+        chess.onclick = function (e) {
+        	if(chessOver){  
+                return;  
+            }  
+            if(!me){ 
+                return;  
+            } 
+        	let x = e.offsetX;
+            let y = e.offsetY;
+            let i = Math.floor(x / 30);
+            let j = Math.floor(y / 30);
+            let _myStep = {
+            	x: i,
+            	y: j
+            }
+            myStep.push(_myStep);
+            console.log(myStep);
+            // console.log('X:'+i+',Y:'+j);
+            if (chessBoard[i][j] == 0) {
+            	chessBoard[i][j] = 1;//我下的棋
+            	for(var k=0 ; k<count ; k++){ 
+                    if(winArr[i][j][k]){  
+                        // console.log(k) 
+                        myWin[k]++;  
+                        // console.log(myWin[k])
+                        computerWin[k] = 6;  //设为6表示改赢法不会出现
+                        if(myWin[k] == 5){  
+                            window.alert("你赢了");  
+                            chessOver = true;
+                        }  
+                    }  
+                }
+                // console.log(computerWin)
+            	nextStep(i , j , me); // 落子
+            	if(!chessOver){  
+                    me = !me; // 下完便不能再下了
+                    // 执行计算机下棋步骤
+                    computerStep();
+                } 
+            }
+            // 清空悔棋的数据
+            myBackStep.splice(0, myBackStep.length);
+            comBackStep.splice(0, comBackStep.length);
+        }
+        var nextStep = function(i , j , me){  
+            context.beginPath();  
+            context.arc(15 + i*30 , 15 + j*30 , 13 , 0 , 2 * Math.PI);  
+            context.closePath();  
+            var gradient = context.createRadialGradient(15 + i*30 + 2 , 15 + j*30 - 2 , 13 , 15 + i*30 + 2 , 15 + j*30 - 2 , 0); 
+            if(me){  
+                gradient.addColorStop(0,"#0A0A0A");  
+                gradient.addColorStop(1,"#636766");
+            }else{  
+                gradient.addColorStop(0,"#D1D1D1");  
+                gradient.addColorStop(1,"#F9F9F9");
+            }  
+            context.fillStyle = gradient;  
+            context.fill();  
+        }
+        // 悔棋
+        var backStep = document.getElementById('backStep');
+        backStep.onclick = function () {
+        	if(chessOver) {
+        		alert("游戏结束，不能执行悔棋操作了");
+        		return;
+        	}
+        	if (comStep.length > 0 && myStep.length > 0) {
+        		var comPreStep = comStep.pop();
+	        	console.log(comPreStep);
+	        	clearStep(comPreStep.x,comPreStep.y, false);
+	        	var myPreStep = myStep.pop();
+	        	console.log(myPreStep);
+	        	clearStep(myPreStep.x,myPreStep.y, true);
+	            myBackStep.push({x: myPreStep.x,y: myPreStep.y});
+	            comBackStep.push({x: comPreStep.x,y: comPreStep.y});
+	            console.log(myBackStep);
+	            console.log(comBackStep);
+        	} else {
+        		alert("尚无下棋步骤");
+        	}
+        	
+        }
+        // 撤销上一步
+        var clearStep = function (x, y, me) {
+        	// 清除画布
+        	context.clearRect(x*30,y*30,30,30);
+        	// context.fillStyle="#272822";
+			// context.fillRect(x*30,y*30,30,30);
+        	// 竖
+        	context.beginPath();  
+        	context.moveTo(x*30+15 , y*30);
+            context.lineTo(x*30+15 , y*30+30);
+            // 横
+            context.moveTo(x*30 , y*30+15);
+            context.lineTo(x*30+30 , y*30+15);
+            context.strokeStyle = '#efefef';
+            context.stroke();
+            context.closePath();
+            // 撤销上一操作
+            chessBoard[x][y] = 0;
+            for(var k=0 ; k<count ; k++){
+                if(winArr[x][y][k]){
+                	if (me) {
+                		myWin[k] > 0 ? myWin[k]-- : myWin[k];
+                    	computerWin[k] = computerWin[k] - 6;
+                		// console.log(myWin[k])
+                		// console.log(computerWin[k])
+                	}else {
+                		computerWin[k] > 0 ? computerWin[k]-- : computerWin[k];
+                    	myWin[k] = myWin[k] - 6;
+                		// console.log(myWin[k])
+                		// console.log(computerWin[k])
+                	}
+                }  
+            }
+        }
+        // 撤销悔棋
+        rebackStep.onclick = function () {
+        	if (myBackStep.length > 0 && comBackStep.length > 0) {
+        		var _myBackStep = myBackStep.pop();
+        		var _comBackStep = comBackStep.pop();            
+        		rebackFn(_myBackStep.x , _myBackStep.y , me);
+        		rebackFn(_comBackStep.x , _comBackStep.y , false)
+        	} else {
+        		alert("尚无撤销悔棋步骤")
+        	}
+        }
+        var rebackFn = function (x, y, me) {
+			nextStep(x, y, me);
+            for(var k=0 ; k<count ; k++){
+                if(winArr[x][y][k]){
+                	if (me) {
+                		myWin[k]++;
+                    	computerWin[k] = 6;
+						chessBoard[x][y] = 1;
+        				// 撤销悔棋后往下棋步骤里面堆数组	
+						myStep.push({x: x,y: y});
+                	}else {
+                		computerWin[k]++;
+                    	myWin[k] = 6;
+						chessBoard[x][y] = 2;
+        				// 撤销悔棋后往下棋步骤里面堆数组	
+						comStep.push({x: x,y: y});
+                	}
+                }  
+            }
+        }
+        //计算机下棋  
+        var computerStep = function (){  
+            var myScore = [];  
+            var computerScore = [];  
+            var max = 0;  
+            var u = 0, v = 0;  
+            for(var i = 0; i < 15; i++){  
+                myScore[i] = [];  
+                computerScore[i] = [];  
+                for(var j = 0; j < 15; j++){  
+                    myScore[i][j] = 0;  
+                    computerScore[i][j] = 0;  
+                }  
+            }  
+            for(var i = 0; i < 15; i++){  
+                for(var j = 0; j < 15; j++){  
+                    if(chessBoard[i][j] == 0){  
+                        for(var k = 0; k < count; k++){  
+                            if(winArr[i][j][k]){  
+                                if(myWin[k] == 1){  
+                                    myScore[i][j] += 200;  
+                                }else if(myWin[k] == 2){  
+                                    myScore[i][j] += 400;  
+                                }else if(myWin[k] == 3){  
+                                    myScore[i][j] += 2000;  
+                                }else if(myWin[k] == 4){  
+                                    myScore[i][j] += 10000;  
+                                }  
+                                  
+                                if(computerWin[k] == 1){  
+                                    computerScore[i][j] += 250;  
+                                }else if(computerWin[k] == 2){  
+                                    computerScore[i][j] += 450;  
+                                }else if(computerWin[k] == 3){  
+                                    computerScore[i][j] += 2500;  
+                                }else if(computerWin[k] == 4){  
+                                    computerScore[i][j] += 15000;  
+                                }                          
+                            }  
+                        }  
+                          
+                        if(myScore[i][j] > max){  
+                            max  = myScore[i][j];  
+                            u = i;  
+                            v = j;  
+                        }else if(myScore[i][j] == max){  
+                            if(computerScore[i][j] > computerScore[u][v]){  
+                                u = i;  
+                                v = j;      
+                            }  
+                        }  
+                          
+                        if(computerScore[i][j] > max){  
+                            max  = computerScore[i][j];  
+                            u = i;  
+                            v = j;  
+                        }else if(computerScore[i][j] == max){  
+                            if(myScore[i][j] > myScore[u][v]){  
+                                u = i;  
+                                v = j;      
+                            }  
+                        }  
+                          
+                    }  
+                }  
+            }  
+            nextStep(u,v,false); 
+            let _comStep = {
+            	x: u,
+            	y: v
+            }
+            comStep.push(_comStep);
+            console.log(comStep)
+            chessBoard[u][v] = 2;  
+            for(var k = 0; k < count; k++){  
+                if(winArr[u][v][k]){  
+                    computerWin[k]++;  
+                    myWin[k] = 6;//这个位置对方不可能赢了  
+                    if(computerWin[k] == 5){  
+                        console.log(k)
+                        console.log(computerWin)
+                        window.alert('计算机赢了');  
+                        chessOver = true;  
+                    }  
+                }  
+            }  
+            if(!chessOver){  
+                me = !me;  
+            }  
+        }
+	</script>
+</body>
+</html>

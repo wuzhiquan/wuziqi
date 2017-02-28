@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>五子棋</title>
+	<style>
+		canvas{
+			display:block;
+			margin:50px auto;
+			box-shadow: -2px -2px 2px #efefef, 5px 5px 5px #b9b9b9;
+		}
+		.button_area{
+			width:450px;
+			margin:0 auto;
+			text-align: center;
+		}
+		.button_area button {
+			width:120px;
+			height: 32px;
+			border: none;
+			background: #8ddb59;
+			line-height: 32px;
+			border-radius: 5px;
+			cursor: pointer;
+			color:#fff;
+			outline: none;
+		}
+		.button_area button:hover{
+			background: #75c54e;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="chess" width="450px" height="450px"></canvas>
+	<div class="button_area">
+		<button id="backStep">悔棋</button>
+		<button id="rebackStep">撤销悔棋</button>
+		<button id="restar" onclick="window.location.reload();">重新开始</button>
+	</div>
+	<!-- 
+	五子棋棋盘落子点对应的二维数组。数组的元素对应落子点。比如数组元素值为0表示该元素对应的落子点没有棋子，数组元素值为1表示该元素对应的落子点有白棋子，数组元素值为2表示该元素对应的落子点有黑棋子； 
+	判断五子棋赢棋的算法是通过对五子棋棋盘落子点对应的二维数组的操作来实现的。
+
+	判断五子棋赢棋算法  
+	judge函数的参数x,y为数组下标，chess表示哪一方。 
+	算法的思想方法是：以当前落子点对应的下标为基点，向其周围8个方向进行搜索，如果有同色子连五子，返回1，或2，否则返回0。返回1代表白棋方胜，返回2代表黑棋方胜。返回0代表没有发生赢棋数据结构状态。
+	 -->
+	<script>
+		var chess = document.getElementById('chess');
+		var context = chess.getContext('2d');
+		var isWhite = true; // 设定白棋先下
+		var gameOver = false; // 设置游戏是否结束的标志
+		// 画出棋盘
+		context.fillStyle="#fff";
+		context.strokeStyle = '#efefef';
+		context.fillRect(0,0,450,450);
+		for(let i = 0; i < 15; i++){
+        	// 竖
+        	context.moveTo(15 + i*30 , 15);
+            context.lineTo(15 + i*30 , 435);
+            context.stroke();
+            // 横
+            context.moveTo(15 , 15 + i*30);
+            context.lineTo(435 , 15 + i*30);
+            context.stroke();
+        }
+        // 创建棋盘二维数组
+        var chessBoard = [];
+        for(let i=0 ; i<15 ; i++){
+            chessBoard[i] = [];
+            for(let j=0 ; j<15 ; j++){
+                // 初始化棋盘为二维数组,[0][0]表示没有下棋
+                chessBoard[i][j] = 0;
+            }
+        }
+        // 下棋
+        // 定义一个下棋步骤的对象数组
+        var chessStep = [];
+        chess.onclick = function (e) {
+        	if (gameOver) {
+        		alert('游戏已经结束了！');
+        		return;
+        	}
+            let x = Math.floor(e.offsetX / 30);
+            let y = Math.floor(e.offsetY / 30);
+            if (chessBoard[x][y] != 0) {
+            	return;
+            }
+            chessStep.push({x: x, y: y, isWhite: isWhite});
+            isWhite ? nextStep(x, y, isWhite) : nextStep(x, y, false);
+            console.log(chessStep);
+            // 清空悔棋数组
+            backChessStep.splice(0, backChessStep.length);
+        }
+        var nextStep = function(i , j , white){  
+            context.beginPath();  
+            context.arc(15 + i*30 , 15 + j*30 , 13 , 0 , 2 * Math.PI);  
+            context.closePath(); 
+            var color = '';
+            var chess = 1; // 默认设为白方
+            if (white) {
+            	color = '#D1D1D1';
+            	chessBoard[i][j] = 1; // 白棋下为1
+            } else {
+				color = '#000';
+            	chessBoard[i][j] = 2; // 黑棋下为2
+            }
+            context.fillStyle = color;  
+            context.fill();
+            isWhite ? chess = 1 : chess = 2;
+            console.log(chess)
+            judge(i, j, chess);
+            isWhite = !isWhite;
+        }
+        // 悔棋
+        // 定义一个悔棋步骤数组，用于撤回悔棋
+        var backChessStep = [];
+        document.getElementById('backStep').onclick = function () {
+        	if (gameOver) {
+        		alert("游戏结束，不能执行悔棋操作了");
+        		return;
+        	}
+        	if(chessStep.length > 0) {
+        		var _chessStep = chessStep.pop();
+        		clearStep(_chessStep.x, _chessStep.y, _chessStep.isWhite);
+        		backChessStep.push({x: _chessStep.x, y: _chessStep.y, isWhite: _chessStep.isWhite});
+        		console.log(backChessStep);
+        	}else {
+        		alert("尚无下棋步骤");
+        	}
+        }
+        var clearStep = function (x, y, role) {
+        	// 清除画布
+        	context.clearRect(x*30,y*30,30,30);
+			// 竖
+        	context.beginPath();  
+        	context.moveTo(x*30+15 , y*30);
+            context.lineTo(x*30+15 , y*30+30);
+            // 横
+            context.moveTo(x*30 , y*30+15);
+            context.lineTo(x*30+30 , y*30+15);
+            context.strokeStyle = '#efefef';
+            context.stroke();
+            context.closePath();
+            // 撤销上一操作
+            chessBoard[x][y] = 0;
+            isWhite = role;
+        }
+        // 撤销悔棋
+        document.getElementById('rebackStep').onclick = function () {
+        	if (backChessStep.length > 0) {
+        		var _backChessStep = backChessStep.pop();
+        		nextStep(_backChessStep.x, _backChessStep.y, _backChessStep.isWhite);
+        		isWhite = !_backChessStep.isWhite;
+        		// 撤销悔棋后往下棋步骤里面堆数组	
+				chessStep.push({x: _backChessStep.x,y: _backChessStep.y,isWhite: _backChessStep.isWhite});
+        	} else {
+        		alert("尚无撤销悔棋步骤")
+        	}
+        }
+        function judge(x, y, chess) {//判断该局棋盘是否赢了 
+			var count1 = 0; 
+			var count2 = 0; 
+			var count3 = 0; 
+			var count4 = 0; 
+			console.log("x:"+x+",y:"+y);
+			//左右判断 
+			for (var i = x; i >= 0; i--) { 
+				if (chessBoard[i][y] != chess) { 
+					break; 
+				} 
+				count1++; 
+			} 
+			for (var i = x + 1; i < 15; i++) { 
+				if (chessBoard[i][y] != chess) { 
+					break; 
+				} 
+				count1++; 
+			} 
+			//上下判断 
+			for (var i = y; i >= 0; i--) { 
+				if (chessBoard[x][i] != chess) { 
+					break; 
+				} 
+				count2++; 
+			} 
+			for (var i = y + 1; i < 15; i++) { 
+				if (chessBoard[x][i] != chess) { 
+					break; 
+				} 
+				count2++; 
+			} 
+			//左上右下判断 
+			for (var i = x, j = y; i >= 0, j >= 0; i--, j--) { 
+				if (i>0&&j>0) {
+					if (chessBoard[i][j] != chess) { 
+						break; 
+					} 
+					count3++; 
+				}
+			} 
+			for (var i = x + 1, j = y + 1; i < 15, j < 15; i++, j++) {
+				if (i<15&&j>0) {
+					if (chessBoard[i][j] != chess) { 
+						break; 
+					} 
+					count3++; 
+				}
+			} 
+			//右上左下判断 
+			for (var i = x, j = y; i >= 0, j < 15; i--, j++) { 
+				if (i>0&&j>0) {
+					if (chessBoard[i][j] != chess) { 
+						break; 
+					} 
+					count4++;
+				}
+			} 
+			for (var i = x + 1, j = y - 1; i < 15, j >= 0; i++, j--) { 
+				console.log('i:'+i+',j:'+j);
+				if (i<15&&j>0) {
+					if (chessBoard[i][j] != chess) { 
+						break; 
+					} 
+					count4++; 
+				}
+			} 
+			if (count1 >= 5 || count2 >= 5 || count3 >= 5 || count4 >= 5) { 
+				if (chess == 1) { 
+					alert("白棋赢了"); 
+				} 
+				else { 
+					alert("黑棋赢了"); 
+				} 
+				gameOver = true;//设置该局棋盘已经赢了，不可以再走了 
+			}
+		} 
+	</script>
+</body>
+</html>
